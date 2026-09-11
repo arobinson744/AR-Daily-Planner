@@ -20,28 +20,20 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-
           p = Path('index.html')
           s = p.read_text()
-
           old_drag = """function apptEl(a,h){const el=document.createElement('div');el.className='appt';el.draggable=true;el.innerHTML="""
           new_drag = """function apptEl(a,h){const el=document.createElement('div');el.className='appt';const canDrag=window.matchMedia('(hover: hover) and (pointer: fine)').matches;el.draggable=canDrag;el.innerHTML="""
-          if old_drag not in s:
-              raise SystemExit('Could not find appointment draggable block')
+          if old_drag not in s: raise SystemExit('Could not find appointment draggable block')
           s = s.replace(old_drag, new_drag, 1)
-
           old_toggle = """const main=el.querySelector('.appt-main'),toggle=()=>{el.classList.toggle('open');main.setAttribute('aria-expanded',el.classList.contains('open'))};main.addEventListener('click',toggle);main.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle()}});el.querySelector('.appt-del').addEventListener('click',()=>{const f=findAppointment(a.id);if(f){f.arr.splice(f.idx,1);saveState();renderCalendar()}});"""
           new_toggle = """const main=el.querySelector('.appt-main'),toggle=()=>{el.classList.toggle('open');main.setAttribute('aria-expanded',el.classList.contains('open'))};el.addEventListener('click',e=>{if(e.target.closest('button,input,textarea,select,.appt-details'))return;toggle()});main.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle()}});el.querySelector('.appt-del').addEventListener('click',e=>{e.stopPropagation();if(!window.confirm('Delete this appointment?'))return;const f=findAppointment(a.id);if(f){f.arr.splice(f.idx,1);saveState();renderCalendar()}});"""
-          if old_toggle not in s:
-              raise SystemExit('Could not find appointment tap/delete block')
+          if old_toggle not in s: raise SystemExit('Could not find appointment tap/delete block')
           s = s.replace(old_toggle, new_toggle, 1)
-
           old_drag_events = """el.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',`appt:${a.id}`);el.classList.add('dragging')});el.addEventListener('dragend',()=>el.classList.remove('dragging'));return el}"""
           new_drag_events = """if(canDrag){el.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',`appt:${a.id}`);el.classList.add('dragging')});el.addEventListener('dragend',()=>el.classList.remove('dragging'))}return el}"""
-          if old_drag_events not in s:
-              raise SystemExit('Could not find appointment drag event block')
+          if old_drag_events not in s: raise SystemExit('Could not find appointment drag event block')
           s = s.replace(old_drag_events, new_drag_events, 1)
-
           p.write_text(s)
           PY
 
@@ -50,13 +42,7 @@ jobs:
           const ASSETS=['./','./index.html','./manifest.webmanifest','./config.js','./icon.svg'];
           self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
           self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
-          self.addEventListener('fetch',e=>{
-            if(e.request.mode==='navigate'){
-              e.respondWith(fetch(e.request).then(r=>{const copy=r.clone();caches.open(CACHE).then(c=>c.put('./index.html',copy));return r}).catch(()=>caches.match('./index.html')));
-              return;
-            }
-            e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)));
-          });
+          self.addEventListener('fetch',e=>{if(e.request.mode==='navigate'){e.respondWith(fetch(e.request).then(r=>{const copy=r.clone();caches.open(CACHE).then(c=>c.put('./index.html',copy));return r}).catch(()=>caches.match('./index.html')));return}e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))});
           EOF
 
       - name: Commit fix
